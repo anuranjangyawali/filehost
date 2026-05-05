@@ -13,13 +13,11 @@ DIR="storage"
 def size_check(files, file_no):
     size_limit = 6291456
     read_bytes = 0
-
     for file_bytes in files[file_no]:
         read_bytes += file_bytes
-        if read_bytes > size_limit:
+        if read_bytes >= size_limit:
             return f"Uploaded file no {file_no} is too large."
-        else:
-            return files[file_no]
+    return files[file_no]
 
 def item_id():
     UUID = str(uuid4())
