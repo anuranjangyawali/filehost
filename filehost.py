@@ -4,7 +4,7 @@ import os
 import asyncio
 import time
 from typing import Annotated
-from fastapi import FastAPI, File, Form 
+from fastapi import FastAPI, File, UploadFile, Form 
 from fastapi.responses import FileResponse
 from uuid import uuid4
 from pydantic import BaseModel
@@ -24,7 +24,7 @@ async def delete_files():
             for outer_dict in file_db:
                 for values in outer_dict.values():
                     set_expire_day = values["Expire-after"]
-                    set_creation_time = values["Created-on"]
+                    set_creation_time = values["Uploaded-on"]
                     if time.time() > set_creation_time + set_expire_day * 86400:
                         ID = list(outer_dict.keys())
                         index_num = file_db.index(outer_dict)
@@ -35,11 +35,12 @@ async def delete_files():
 def size_check(files, file_no):
     size_limit = 6291456
     read_bytes = 0
-    for file_bytes in files[file_no]:
-        read_bytes += file_bytes
+    for file_bytes in  files[file_no].file:
+        read_bytes += len(file_bytes)
         if read_bytes >= size_limit:
             return f"Uploaded file no {file_no} is too large."
-    return files[file_no]
+    files[file_no].file.seek(0)
+    return files[file_no].file
 
 def file_metadata():
     UUID = str(uuid4())
@@ -59,22 +60,22 @@ def list_files():
     return {"ID": list_of_files}
 
 @app.post("/upload")
-def upload_file(files: Annotated[list[bytes], File(title="Upload File", \
-                description="Upload file size less than 6MiB")],
+def upload_file(files: Annotated[list[UploadFile], File(title="Upload File", \
+                description="Upload file size less than 6MiB")],\
                 expire_after: Annotated[int, Form(\
                 description="Expire in x days")] = 1):
 
-    ID, TIME = file_metadata()
 
     for file_no in range(len(files)):
+        ID, TIME = file_metadata()
         file = size_check(files, file_no)
 
         if type(file) is str:
             response.append(file)
         else:
             with open(f"{DIR}/{ID}", "wb") as local_file:
-                file_db.append({ID : { "Expire-after": expire_after, "Created-on": TIME } }) 
-                local_file.write(files[file_no])
+                file_db.append({ID : { "Expire-after": expire_after, "Uploaded-on": TIME } }) 
+                local_file.write(file.read())
                 response.append(f"Uploaded file no {file_no} can be accessed at http://127.0.0.1:8000/download/{ID}")
 
     return { "URLs": response, "No of files uploaded": len(files), "Expire in (days)": expire_after }
