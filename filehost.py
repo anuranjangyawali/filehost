@@ -12,7 +12,6 @@ from pydantic import BaseModel
 app = FastAPI()
 DIR="storage"
 file_db: list[dict] = []
-response: list[dict] = []
 
 @app.on_event("startup")
 async def startup():
@@ -66,6 +65,7 @@ def upload_file(files: Annotated[list[UploadFile], File(title="Upload File", \
                 description="Expire in x days")] = 1):
 
 
+    response: list[dict] = []
     for file_no in range(len(files)):
         ID, TIME = file_metadata()
         file = size_check(files, file_no)
